@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smriti — Hindi Language Model</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:ital@0;1&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg        : #0e0d0b;
+            --bg2       : #161410;
+            --border    : #2a2620;
+            --text      : #d4c9b8;
+            --text-dim  : #6b6155;
+            --accent    : #c4873a;
+            --accent-dim: #7a5224;
+            --hindi     : #e8dcc8;
+            --error     : #a05040;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 300;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        header {
+            padding: 3.5rem 0 2.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: baseline;
+            gap: 1.2rem;
+            animation: fadeUp 0.8s ease both;
+        }
+
+        .logo-deva {
+            font-family: 'Tiro Devanagari Hindi', serif;
+            font-size: 2rem;
+            color: var(--accent);
+            letter-spacing: 0.02em;
+            line-height: 1;
+        }
+
+        .logo-en {
+            font-size: 0.78rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        .header-right { margin-left: auto; text-align: right; }
+
+        .val-ppl {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+        }
+
+        .val-ppl span {
+            color: var(--accent);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* ── Main ── */
+        main {
+            flex: 1;
+            padding: 2.5rem 0;
+            animation: fadeUp 0.8s 0.1s ease both;
+        }
+
+        /* ── Input area ── */
+        .input-section { margin-bottom: 1.5rem; }
+
+        .field-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.7rem;
+        }
+
+        label.field-label {
+            font-size: 0.68rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        /* ── Toggle ── */
+        .translit-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .translit-toggle input[type="checkbox"] { display: none; }
+
+        .toggle-track {
+            width: 32px;
+            height: 17px;
+            background: var(--border);
+            border-radius: 9px;
+            position: relative;
+            transition: background 0.22s;
+            flex-shrink: 0;
+        }
+
+        .toggle-thumb {
+            width: 13px;
+            height: 13px;
+            background: var(--text-dim);
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.22s, background 0.22s;
+        }
+
+        .translit-toggle input:checked ~ .toggle-track { background: var(--accent-dim); }
+        .translit-toggle input:checked ~ .toggle-track .toggle-thumb {
+            transform: translateX(15px);
+            background: var(--accent);
+        }
+
+        .toggle-label {
+            font-size: 0.66rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            transition: color 0.2s;
+        }
+
+        .translit-active .toggle-label { color: var(--accent); }
+
+        /* ── Textarea ── */
+        textarea {
+            width: 100%;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--hindi);
+            font-family: 'Tiro Devanagari Hindi', serif;
+            font-size: 1.2rem;
+            line-height: 1.75;
+            padding: 1rem 1.2rem;
+            resize: vertical;
+            min-height: 90px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea.latin-mode {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.05rem;
+            color: var(--text);
+            letter-spacing: 0.02em;
+        }
+
+        textarea:focus { border-color: var(--accent-dim); }
+        textarea::placeholder { color: var(--text-dim); font-family: inherit; }
+
+        /* ── Devanagari preview ── */
+        .preview-block { margin-top: 0.55rem; display: none; }
+        .preview-block.visible { display: block; }
+
+        .preview-label {
+            font-size: 0.62rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 0.35rem;
+            margin-top: 0.6rem;
+        }
+
+        .deva-preview {
+            padding: 0.65rem 1.2rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: 'Tiro Devanagari Hindi', serif;
+            font-size: 1.15rem;
+            line-height: 1.75;
+            color: var(--hindi);
+            min-height: 3rem;
+            word-break: break-word;
+        }
+
+        .deva-preview:empty::after { content: '…'; color: var(--text-dim); }
+
+        .hint {
+            margin-top: 0.5rem;
+            font-size: 0.67rem;
+            color: var(--text-dim);
+            letter-spacing: 0.04em;
+            line-height: 1.7;
+        }
+
+        .hint code {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 0.05em 0.28em;
+            border-radius: 2px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.88em;
+            color: var(--text);
+        }
+
+        /* ── Controls ── */
+        .controls {
+            display: flex;
+            align-items: flex-end;
+            gap: 1.5rem;
+            margin-bottom: 1.8rem;
+            flex-wrap: wrap;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            min-width: 130px;
+        }
+
+        .slider-label {
+            font-size: 0.67rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .slider-label .val { color: var(--text); font-variant-numeric: tabular-nums; }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 2px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+        .generate-btn {
+            margin-left: auto;
+            background: transparent;
+            border: 1px solid var(--accent-dim);
+            color: var(--accent);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.85rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            padding: 0.55rem 1.6rem;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: background 0.2s, color 0.2s;
+            white-space: nowrap;
+        }
+
+        .generate-btn:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
+        .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── Output ── */
+        .output-section {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg2);
+            min-height: 220px;
+            padding: 1.4rem 1.6rem;
+        }
+
+        .output-label {
+            font-size: 0.67rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 1.2rem;
+        }
+
+        /* Output text — the key formatting rules */
+        #output-text {
+            font-family: 'Tiro Devanagari Hindi', serif;
+            font-size: 1.2rem;
+            line-height: 2;             /* generous line height for Devanagari */
+            color: var(--hindi);
+            min-height: 140px;
+            word-break: break-word;
+            word-spacing: 0.05em;       /* slight extra spacing between words */
+            letter-spacing: 0.01em;
+        }
+
+        /* Prompt part shown in dimmer colour */
+        .prompt-part {
+            color: var(--text-dim);
+        }
+
+        /* Generated text */
+        .generated-part {
+            color: var(--hindi);
+        }
+
+        /* Each sentence on its own visual block */
+        .sentence {
+            display: block;
+            margin-bottom: 0.6rem;
+        }
+
+        /* Blinking cursor */
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--accent);
+            margin-left: 1px;
+            vertical-align: middle;
+            animation: blink 0.9s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0; }
+        }
+
+        /* ── Info strip ── */
+        .info-strip {
+            display: flex;
+            gap: 2rem;
+            padding: 1.5rem 0;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+            animation: fadeUp 0.8s 0.2s ease both;
+        }
+
+        .info-item { display: flex; flex-direction: column; gap: 0.2rem; }
+
+        .info-key {
+            font-size: 0.62rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .info-val { font-size: 0.85rem; color: var(--text); }
+
+        /* ── Footer ── */
+        footer {
+            padding: 1.2rem 0 2rem;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+            border-top: 1px solid var(--border);
+        }
+
+        footer a {
+            color: var(--text-dim);
+            text-decoration: none;
+            border-bottom: 1px solid var(--border);
+            transition: color 0.2s;
+        }
+
+        footer a:hover { color: var(--accent); }
+
+        .error-msg {
+            color: var(--error);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 540px) {
+            .controls { flex-direction: column; align-items: stretch; }
+            .generate-btn { margin-left: 0; width: 100%; text-align: center; }
+            .info-strip { gap: 1.2rem; }
+            header { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <header>
+        <div class="logo-deva">स्मृति</div>
+        <div class="logo-en">Smriti</div>
+        <div class="header-right">
+            <div class="val-ppl">val perplexity &nbsp;<span>{{ info.val_ppl }}</span></div>
+        </div>
+    </header>
+
+    <main>
+        <div class="input-section">
+            <div class="field-header">
+                <label class="field-label" for="prompt">Hindi Prompt</label>
+                <label class="translit-toggle" id="translit-label" title="Type romanized Hindi, see Devanagari live">
+                    <input type="checkbox" id="translit-toggle">
+                    <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                    <span class="toggle-label">Transliterate</span>
+                </label>
+            </div>
+
+            <textarea
+                id="prompt"
+                rows="3"
+                placeholder="यहाँ हिंदी में लिखें…"
+                spellcheck="false"
+            ></textarea>
+
+            <div class="preview-block" id="preview-block">
+                <div class="preview-label">Devanagari</div>
+                <div class="deva-preview" id="deva-preview"></div>
+                <div class="hint">
+                    <code>aa</code> → आ &nbsp;·&nbsp;
+                    <code>ii</code>/<code>ee</code> → ई &nbsp;·&nbsp;
+                    <code>oo</code>/<code>uu</code> → ऊ &nbsp;·&nbsp;
+                    <code>sh</code> → श &nbsp;·&nbsp;
+                    <code>kh gh ch jh th dh ph bh</code> → aspirates &nbsp;·&nbsp;
+                    <code>.</code> → । &nbsp;·&nbsp;
+                    <code>M</code> → ं
+                </div>
+            </div>
+
+            <div class="error-msg" id="error-msg">Something went wrong. Please try again.</div>
+        </div>
+
+        <div class="controls">
+            <div class="slider-group">
+                <div class="slider-label">
+                    Temperature <span class="val" id="temp-val">1.0</span>
+                </div>
+                <input type="range" id="temperature" min="0.3" max="1.5" step="0.05" value="1.0">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    Length <span class="val" id="len-val">150</span>
+                </div>
+                <input type="range" id="max-new" min="30" max="350" step="10" value="150">
+            </div>
+
+            <button class="generate-btn" id="gen-btn" onclick="generate()">Generate</button>
+        </div>
+
+        <div class="output-section">
+            <div class="output-label">Output</div>
+            <div id="output-text"></div>
+        </div>
+    </main>
+
+    <div class="info-strip">
+        <div class="info-item">
+            <span class="info-key">Model</span>
+            <span class="info-val">{{ info.parameters }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-key">Architecture</span>
+            <span class="info-val">{{ info.architecture }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-key">Trained on</span>
+            <span class="info-val">{{ info.trained_on }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-key">Steps</span>
+            <span class="info-val">{{ info.step }}</span>
+        </div>
+    </div>
+
+    <footer>
+        Smriti &mdash; Hindi LM trained from scratch &nbsp;·&nbsp;
+        <a href="https://huggingface.co/datasets/ai4bharat/sangraha" target="_blank">Sangraha Verified</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com" target="_blank">GitHub</a>
+    </footer>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// TRANSLITERATION ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CONSONANTS = {
+    'ksh':'क्ष', 'gya':'ज्ञ', 'dnya':'ज्ञ',
+    'kh':'ख',  'gh':'घ',  'ng':'ङ',
+    'chh':'छ', 'ch':'च',  'jh':'झ', 'ny':'ञ',
+    'Th':'ठ',  'Dh':'ढ',  'th':'थ', 'dh':'ध',
+    'Sh':'ष',  'sh':'श',
+    'ph':'फ',  'bh':'भ',
+    'ck':'क',
+    'k':'क',   'g':'ग',   'j':'ज',
+    'T':'ट',   'D':'ड',   'N':'ण',
+    't':'त',   'd':'द',   'n':'न',
+    'p':'प',   'f':'फ',   'b':'ब',  'm':'म',
+    'y':'य',   'r':'र',   'l':'ल',  'L':'ळ',
+    'v':'व',   'w':'व',
+    'S':'श',   's':'स',   'h':'ह',
+    'q':'क़',  'z':'ज़',  'R':'ड़',
+    'x':'क्स',
+};
+
+const STANDALONE = {
+    'aa':'आ', 'A':'आ',
+    'ii':'ई', 'ee':'ई', 'I':'ई',
+    'uu':'ऊ', 'oo':'ऊ', 'U':'ऊ',
+    'ai':'ऐ',
+    'au':'औ', 'ou':'औ', 'ow':'औ',
+    'ri':'ऋ',
+    'a':'अ', 'i':'इ', 'u':'उ', 'e':'ए', 'o':'ओ',
+};
+
+const MATRAS = {
+    'aa':'ा', 'A':'ा',
+    'ii':'ी', 'ee':'ी', 'I':'ी',
+    'uu':'ू', 'oo':'ू', 'U':'ू',
+    'ai':'ै',
+    'au':'ौ', 'ou':'ौ', 'ow':'ौ',
+    'ri':'ृ',
+    'a':'', 'i':'ि', 'u':'ु', 'e':'े', 'o':'ो',
+};
+
+const HALANT = '्', ANUSVARA = 'ं', VISARGA = 'ः';
+
+const sortLen = keys => keys.sort((a, b) => b.length - a.length);
+const C_KEYS  = sortLen(Object.keys(CONSONANTS));
+const V_KEYS  = sortLen(Object.keys(STANDALONE));
+const M_KEYS  = sortLen(Object.keys(MATRAS));
+
+function firstMatch(str, pos, keys) {
+    for (const k of keys) if (str.substr(pos, k.length) === k) return k;
+    return null;
+}
+
+function latinToDevanagari(text) {
+    let out = '', i = 0, hasCons = false, pendDeva = '';
+
+    function flush(withHalant = false) {
+        if (hasCons) { out += pendDeva + (withHalant ? HALANT : ''); hasCons = false; pendDeva = ''; }
+    }
+
+    while (i < text.length) {
+        const ch = text[i];
+        if (' \n\t\r'.includes(ch))   { flush(false); out += ch; i++; continue; }
+        if (ch === '.')                { flush(false); out += '।'; i++; continue; }
+        if (ch === 'M')                { out += (hasCons ? pendDeva : '') + ANUSVARA; hasCons = false; pendDeva = ''; i++; continue; }
+        if (ch === 'H' && (i+1 >= text.length || text[i+1] === ' ')) {
+            out += (hasCons ? pendDeva : '') + VISARGA; hasCons = false; pendDeva = ''; i++; continue;
+        }
+
+        const mc = firstMatch(text, i, C_KEYS);
+        if (mc) { flush(true); pendDeva = CONSONANTS[mc]; hasCons = true; i += mc.length; continue; }
+
+        if (hasCons) {
+            const mm = firstMatch(text, i, M_KEYS);
+            if (mm) { out += pendDeva + MATRAS[mm]; hasCons = false; pendDeva = ''; i += mm.length; continue; }
+        } else {
+            const mv = firstMatch(text, i, V_KEYS);
+            if (mv) { out += STANDALONE[mv]; i += mv.length; continue; }
+        }
+
+        flush(false); out += ch; i++;
+    }
+
+    flush(false);
+    return out;
+}
+
+
+const toggleEl    = document.getElementById('translit-toggle');
+const toggleLabel = document.getElementById('translit-label');
+const promptEl    = document.getElementById('prompt');
+const previewBlk  = document.getElementById('preview-block');
+const devaEl      = document.getElementById('deva-preview');
+
+let translitMode  = false;
+
+toggleEl.addEventListener('change', () => {
+    translitMode = toggleEl.checked;
+    promptEl.value = '';
+    devaEl.textContent = '';
+    toggleLabel.classList.toggle('translit-active', translitMode);
+
+    if (translitMode) {
+        promptEl.classList.add('latin-mode');
+        promptEl.placeholder = 'aaj ka mausam kaafi accha hai…';
+        previewBlk.classList.add('visible');
+    } else {
+        promptEl.classList.remove('latin-mode');
+        promptEl.placeholder = 'यहाँ हिंदी में लिखें…';
+        previewBlk.classList.remove('visible');
+    }
+    promptEl.focus();
+});
+
+promptEl.addEventListener('input', () => {
+    if (!translitMode) return;
+    devaEl.textContent = promptEl.value ? latinToDevanagari(promptEl.value) : '';
+});
+
+promptEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generate(); }
+});
+
+
+document.getElementById('temperature').addEventListener('input', function() {
+    document.getElementById('temp-val').textContent = parseFloat(this.value).toFixed(2);
+});
+document.getElementById('max-new').addEventListener('input', function() {
+    document.getElementById('len-val').textContent = this.value;
+});
+
+
+function getPrompt() {
+    return translitMode ? devaEl.textContent.trim() : promptEl.value.trim();
+}
+
+function renderOutput(promptText, generatedText, cursorEl) {
+    const container = document.getElementById('output-text');
+    container.innerHTML = '';
+
+    const promptSpan = document.createElement('span');
+    promptSpan.className   = 'prompt-part sentence';
+    promptSpan.textContent = promptText;
+    container.appendChild(promptSpan);
+
+    if (!generatedText && !cursorEl) return;
+
+    const raw      = generatedText;
+    const segments = [];
+    let   buf      = '';
+
+    for (let i = 0; i < raw.length; i++) {
+        buf += raw[i];
+        if (raw[i] === '।' || raw[i] === '\n') {
+            segments.push(buf.trim());
+            buf = '';
+        }
+    }
+
+    if (buf.trim()) segments.push(buf.trim());
+
+    segments.forEach((seg, idx) => {
+        if (!seg) return;
+        const span       = document.createElement('span');
+        span.className   = 'sentence generated-part';
+        span.textContent = seg;
+
+        if (idx === segments.length - 1 && cursorEl) {
+            span.appendChild(cursorEl);
+        }
+
+        container.appendChild(span);
+    });
+
+    if (segments.length === 0 && cursorEl) {
+        promptSpan.appendChild(cursorEl);
+    }
+}
+
+
+let controller = null;
+
+async function generate() {
+    const prompt = getPrompt();
+    if (!prompt) return;
+
+    if (controller) { controller.abort(); controller = null; }
+
+    const btn      = document.getElementById('gen-btn');
+    const errorMsg = document.getElementById('error-msg');
+
+    btn.disabled           = true;
+    btn.textContent        = 'Generating…';
+    errorMsg.style.display = 'none';
+
+    let generatedText = '';
+
+    const cursor     = document.createElement('span');
+    cursor.className = 'cursor';
+
+    renderOutput(prompt, '', cursor);
+
+    controller = new AbortController();
+
+    try {
+        const res = await fetch('/generate', {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify({
+                prompt,
+                temperature: parseFloat(document.getElementById('temperature').value),
+                max_new    : parseInt(document.getElementById('max-new').value),
+                top_k      : 50,
+                top_p      : 0.95,
+            }),
+            signal: controller.signal,
+        });
+
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let   buffer  = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const data = JSON.parse(line.slice(6));
+
+                if (data.done) {
+                    cursor.remove();
+                    renderOutput(prompt, generatedText, null);
+                    break;
+                }
+
+                if (data.token) {
+                    generatedText += data.token;
+                    renderOutput(prompt, generatedText, cursor);
+                }
+
+                if (data.error) {
+                    cursor.remove();
+                    errorMsg.style.display = 'block';
+                    break;
+                }
+            }
+        }
+
+    } catch (err) {
+        if (err.name !== 'AbortError') errorMsg.style.display = 'block';
+        cursor.remove();
+    }
+
+    btn.disabled    = false;
+    btn.textContent = 'Generate';
+    controller      = null;
+}
+</script>
+
+</body>
+</html>
